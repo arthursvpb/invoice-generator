@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+*.log
+.DS_Store
+.env*.local
+next-env.d.ts
+tsconfig.tsbuildinfo
+.playwright-mcp/
+playwright-report/
+test-results/
+public/sw.js
+public/swe-worker-*.js
+public/workbox-*.js
