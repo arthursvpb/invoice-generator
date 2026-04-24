@@ -29,7 +29,7 @@ export default defineConfig({
   ],
   webServer: {
     command: `pnpm dev --port ${PORT}`,
-    url: `${BASE_URL}/invoice`,
+    url: `${BASE_URL}/`,
     timeout: 90_000,
     reuseExistingServer: !process.env.CI,
     stdout: 'ignore',

@@ -32,12 +32,13 @@ test.describe('A. Smoke', () => {
     ]) {
       await expect(page.getByText(title, { exact: false }).first()).toBeVisible();
     }
-    expect(page.url()).toContain('/invoice');
+    expect(page.url()).toMatch(/\/$/);
   });
 
-  test('2. root redirects to /invoice', async ({ page }) => {
+  test('2. root serves the invoice form directly (no redirect)', async ({ page }) => {
     await page.goto('/');
-    await expect(page).toHaveURL(/\/invoice$/);
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 
   test('3. manifest and PWA icons reachable', async ({ request }) => {
@@ -102,7 +103,7 @@ test.describe('B. Theme + locale', () => {
   });
 });
 
-test.describe('C. Schema validation — every refine', () => {
+test.describe('C. Schema validation - every refine', () => {
   test('8. empty issuer.legalName surfaces required error', async ({ page }) => {
     const inv = new InvoicePage(page);
     await inv.seedDraftBeforeLoad({

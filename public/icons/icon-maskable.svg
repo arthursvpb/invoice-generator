@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Invoice Generator">
-  <rect width="512" height="512" fill="#0a0a0a"/>
-  <g transform="translate(168 144)" fill="none" stroke="#fafafa" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M28 8H124l56 56V202c0 11.6-9.4 21-21 21H28c-11.6 0-21-9.4-21-21V29c0-11.6 9.4-21 21-21z"/>
-    <path d="M124 8v56h56"/>
-    <path d="M48 110h84"/>
-    <path d="M48 140h84"/>
-    <path d="M48 170h48"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="AV LABS">
+  <rect width="512" height="512" fill="#0A0A0B"/>
+  <text
+    x="256" y="322"
+    text-anchor="middle"
+    font-family="'Helvetica Neue', Helvetica, Arial, 'Liberation Sans', sans-serif"
+    font-weight="500"
+    font-size="224"
+    letter-spacing="-14"
+    fill="#FFFFFF"
+  >A<tspan fill="#6B6E76">V</tspan></text>
 </svg>

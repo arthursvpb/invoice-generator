@@ -1,13 +1,13 @@
 {
-  "name": "Invoice Generator",
+  "name": "Invoice Generator - AV LABS",
   "short_name": "Invoice",
   "description": "Local-first invoice and cancellation generator for contractors.",
-  "start_url": "/invoice",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "background_color": "#f5f5f3",
+  "theme_color": "#0a0a0b",
   "lang": "en",
   "categories": ["productivity", "business", "finance"],
   "icons": [

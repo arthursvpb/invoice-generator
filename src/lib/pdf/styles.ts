@@ -1,16 +1,16 @@
 import { StyleSheet } from '@react-pdf/renderer';
 
 export const palette = {
-  text: '#0f172a',
-  muted: '#3f3f46',
-  subtle: '#52525b',
-  border: '#d4d4d8',
-  borderStrong: '#0f172a',
-  surface: '#ffffff',
-  softSurface: '#f4f4f5',
+  text: '#0A0A0B', // AV Ink
+  muted: '#4A4D54', // AV gray-700
+  subtle: '#6B6E76', // AV Steel
+  border: '#D8D9DC', // AV Mist
+  borderStrong: '#0A0A0B',
+  surface: '#FFFFFF',
+  softSurface: '#F5F5F3', // AV Paper
   warn: '#92400e',
   warnSurface: '#fef3c7',
-  accentSurface: '#eef2ff',
+  accentSurface: '#EDEDEB', // AV gray-100
   negative: '#9f1239',
 };
 
@@ -34,6 +34,23 @@ export const styles = StyleSheet.create({
     flexDirection: 'column',
     flexShrink: 1,
     paddingRight: 24,
+  },
+  brandStamp: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 14,
+  },
+  brandAv: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: palette.text,
+    letterSpacing: -0.4,
+  },
+  brandLabs: {
+    fontSize: 14,
+    fontWeight: 400,
+    color: palette.subtle,
+    letterSpacing: -0.2,
   },
   headerRight: {
     alignItems: 'flex-end',

@@ -104,7 +104,7 @@ export class InvoicePage {
   }
 
   async goto(): Promise<void> {
-    await this.page.goto('/invoice');
+    await this.page.goto('/');
     await expect(this.page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(this.page.locator('body[data-hydrated="true"]')).toBeAttached({
       timeout: 15_000,

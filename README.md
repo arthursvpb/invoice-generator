@@ -1,4 +1,8 @@
-<h1 align="center">🧾 Invoice Generator</h1>
+<h1 align="center">Invoice Generator - AV LABS</h1>
+
+<p align="center">
+  <strong>Live at <a href="https://invoice.arthurvasconcellos.com">invoice.arthurvasconcellos.com</a> - part of <a href="https://arthurvasconcellos.com">AV LABS</a>.</strong>
+</p>
 
 <p align="center">
   <a href="#-running">Running</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
@@ -8,7 +12,7 @@
 
 <p align="center">
   <a href="#-license">
-    <img alt="License" src="https://img.shields.io/static/v1?label=license&message=MIT&color=628141&labelColor=000000">
+    <img alt="License" src="https://img.shields.io/static/v1?label=license&message=MIT&color=0A0A0B&labelColor=6B6E76">
   </a>
 </p>
 
@@ -24,16 +28,16 @@ Invoice Generator is a local-first, browser-only PWA for contractors who bill fo
 
 ## 🚀 Features
 
-- ✅ **Two document types** — invoice (`INV-YYYY-NNN`) and cancellation (`CN-YYYY-NNN`) with auto-negated totals on cancellation.
+- ✅ **Two document types** - invoice (`INV-YYYY-NNN`) and cancellation (`CN-YYYY-NNN`) with auto-negated totals on cancellation.
 - ✅ **Distinct issuer and payer** parties with full address blocks.
-- ✅ **Currency-aware** — contract currency + payout currency. The FX section appears only when they differ, auto-fetches the latest ECB-sourced rate from frankfurter.dev, and accepts a manual override.
+- ✅ **Currency-aware** - contract currency + payout currency. The FX section appears only when they differ, auto-fetches the latest ECB-sourced rate from frankfurter.dev, and accepts a manual override.
 - ✅ **Bank details** persisted in settings and rendered in the PDF below the parties block.
-- ✅ **Strong form ergonomics** — invalid fields highlight in red and the page jumps to the first invalid input on submit.
-- ✅ **Internationalised** — `pt-BR` and `en` across UI and PDF output.
-- ✅ **Local-first persistence** — draft, issuer defaults, bank defaults, and a 6-hour FX cache live in `localStorage`. No backend, no accounts, no sync.
-- ✅ **Deterministic PDF filenames** — `<type>-<number>-<issueDate>.pdf`. The hero amount (payout when FX is present, otherwise contractual) reads as the most prominent line.
+- ✅ **Strong form ergonomics** - invalid fields highlight in red and the page jumps to the first invalid input on submit.
+- ✅ **Internationalised** - `pt-BR` and `en` across UI and PDF output.
+- ✅ **Local-first persistence** - draft, issuer defaults, bank defaults, and a 6-hour FX cache live in `localStorage`. No backend, no accounts, no sync.
+- ✅ **Deterministic PDF filenames** - `<type>-<number>-<issueDate>.pdf`. The hero amount (payout when FX is present, otherwise contractual) reads as the most prominent line.
 - ✅ **Installable PWA** with offline support after first load.
-- ✅ **Built-in bug report** — opens a pre-filled GitHub issue with optional technical context. Maintainer email never enters source.
+- ✅ **Built-in bug report** - opens a pre-filled GitHub issue with optional technical context. Maintainer email never enters source.
 
 ## 💻 **Running**
 
@@ -94,15 +98,15 @@ Recommended external flow:
 
 ## ✨ **Technologies**
 
-- **Framework** — Next.js 15 (App Router), React 19, TypeScript
-- **Styling** — Tailwind v4, shadcn primitives, Nunito Sans
-- **Forms & validation** — react-hook-form, zod, big.js (decimal math)
-- **State** — zustand (persisted draft + settings stores)
-- **PDF** — `@react-pdf/renderer` with locally bundled fonts
-- **FX** — frankfurter.dev (ECB-sourced reference rates, browser CORS friendly)
-- **PWA** — Serwist service worker
-- **Internationalisation** — custom dictionary + `Intl.NumberFormat`/`DateTimeFormat`
-- **Testing** — Vitest + @testing-library, Playwright (Chromium)
+- **Framework** - Next.js 15 (App Router), React 19, TypeScript
+- **Styling** - Tailwind v4, shadcn primitives, Nunito Sans
+- **Forms & validation** - react-hook-form, zod, big.js (decimal math)
+- **State** - zustand (persisted draft + settings stores)
+- **PDF** - `@react-pdf/renderer` with locally bundled fonts
+- **FX** - frankfurter.dev (ECB-sourced reference rates, browser CORS friendly)
+- **PWA** - Serwist service worker
+- **Internationalisation** - custom dictionary + `Intl.NumberFormat`/`DateTimeFormat`
+- **Testing** - Vitest + @testing-library, Playwright (Chromium)
 
 ## 📝 **License**
 

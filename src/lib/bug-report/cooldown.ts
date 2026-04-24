@@ -22,7 +22,7 @@ function writeState(next: StoredState): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
-    // localStorage unavailable / quota — best-effort, ignore.
+    // localStorage unavailable / quota - best-effort, ignore.
   }
 }
 

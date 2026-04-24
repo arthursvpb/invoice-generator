@@ -220,6 +220,10 @@ export function InvoicePdf({ canonical }: { canonical: CanonicalInvoice }) {
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
+            <View style={styles.brandStamp}>
+              <Text style={styles.brandAv}>AV</Text>
+              <Text style={styles.brandLabs}> LABS</Text>
+            </View>
             <Text style={styles.eyebrow}>{pageEyebrow}</Text>
             <Text style={styles.title}>{canonical.issuer.legalName}</Text>
             <Text style={styles.subtitle}>{canonical.contract.serviceDescription}</Text>
