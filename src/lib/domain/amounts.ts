@@ -23,8 +23,17 @@ export function multiply(a: string, b: string, decimals = 2): string {
   return parseDecimal(a).times(parseDecimal(b)).toFixed(decimals);
 }
 
+export function divide(a: string, b: string, decimals = 2): string {
+  return parseDecimal(a).div(parseDecimal(b)).toFixed(decimals);
+}
+
 export function negate(value: string, decimals = 2): string {
   return parseDecimal(value).times(-1).toFixed(decimals);
+}
+
+export function sum(values: string[], decimals = 2): string {
+  if (values.length === 0) return new Big(0).toFixed(decimals);
+  return values.reduce((acc, v) => acc.plus(parseDecimal(v)), new Big(0)).toFixed(decimals);
 }
 
 export function isPositive(value: string): boolean {

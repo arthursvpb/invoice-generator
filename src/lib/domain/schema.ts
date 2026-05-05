@@ -71,6 +71,8 @@ const localeEnum = z.enum(['pt-BR', 'en']);
 
 const documentTypeEnum = z.enum(['invoice', 'cancellation']);
 
+const reimbursementDirectionEnum = z.enum(['original_per_payout', 'payout_per_original']);
+
 const partySchema = z.object({
   legalName: trimmed.refine((s) => s.length > 0, { message: 'Required' }),
   taxId: optionalTrimmed,
@@ -87,18 +89,15 @@ const partySchema = z.object({
 });
 
 const contractSchema = z.object({
-  serviceDescription: trimmed.refine((s) => s.length > 0, { message: 'Required' }),
-  hourlyRate: positiveDecimalString,
   contractCurrency: currencyCode,
   payoutCurrency: currencyCode,
   payoutMethod: optionalTrimmed,
 });
 
-const timesheetSchema = z
+const servicePeriodSchema = z
   .object({
     periodStart: isoDate,
     periodEnd: isoDate,
-    totalHours: positiveDecimalString,
   })
   .refine((v) => v.periodStart <= v.periodEnd, {
     message: 'Period end must be on or after period start',
@@ -120,6 +119,49 @@ const fxReferenceSchema = z.object({
   notes: optionalTrimmed,
 });
 
+const reimbursementFxSchema = z.object({
+  rate: positiveDecimalString,
+  direction: reimbursementDirectionEnum,
+  referenceDate: isoDate,
+  source: optionalTrimmed,
+  notes: optionalTrimmed,
+});
+
+const lineItemIdSchema = trimmed.refine((s) => s.length > 0, { message: 'Required' });
+
+const hourlyServiceItemSchema = z.object({
+  id: lineItemIdSchema,
+  kind: z.literal('hourly_service'),
+  description: trimmed.refine((s) => s.length > 0, { message: 'Required' }),
+  quantity: positiveDecimalString,
+  rate: positiveDecimalString,
+});
+
+const fixedServiceItemSchema = z.object({
+  id: lineItemIdSchema,
+  kind: z.literal('fixed_service'),
+  description: trimmed.refine((s) => s.length > 0, { message: 'Required' }),
+  amount: positiveDecimalString,
+});
+
+const reimbursementItemSchema = z.object({
+  id: lineItemIdSchema,
+  kind: z.literal('reimbursement'),
+  description: trimmed.refine((s) => s.length > 0, { message: 'Required' }),
+  originalAmount: positiveDecimalString,
+  originalCurrency: currencyCode,
+  fx: reimbursementFxSchema.optional(),
+  note: optionalTrimmed,
+});
+
+const lineItemSchema = z.discriminatedUnion('kind', [
+  hourlyServiceItemSchema,
+  fixedServiceItemSchema,
+  reimbursementItemSchema,
+]);
+
+const lineItemsSchema = z.array(lineItemSchema).min(1, { message: 'At least one line item is required' });
+
 const originalInvoiceSchema = z.object({
   invoiceNumber: trimmed.refine((s) => /^INV-\d{4}-\d{3,}$/.test(s), {
     message: 'Must match INV-YYYY-NNN',
@@ -140,7 +182,8 @@ const invoiceBaseShape = {
   issuer: partySchema,
   payer: partySchema,
   contract: contractSchema,
-  timesheet: timesheetSchema,
+  servicePeriod: servicePeriodSchema,
+  lineItems: lineItemsSchema,
   fxReference: fxReferenceSchema.optional(),
   notes: z
     .string()
@@ -164,13 +207,39 @@ const cancellationBranch = z.object({
 export const invoiceDraftSchema = z
   .discriminatedUnion('documentType', [invoiceBranch, cancellationBranch])
   .superRefine((draft, ctx) => {
-    if (draft.contract.contractCurrency !== draft.contract.payoutCurrency && !draft.fxReference) {
+    const hasServiceItems = draft.lineItems.some(
+      (item) => item.kind === 'hourly_service' || item.kind === 'fixed_service',
+    );
+    const contractDiffersFromPayout =
+      draft.contract.contractCurrency !== draft.contract.payoutCurrency;
+
+    if (hasServiceItems && contractDiffersFromPayout && !draft.fxReference) {
       ctx.addIssue({
         code: 'custom',
         message: 'FX reference is required when contract and payout currencies differ',
         path: ['fxReference'],
       });
     }
+
+    draft.lineItems.forEach((item, index) => {
+      if (item.kind !== 'reimbursement') return;
+      const reimbursementNeedsFx = item.originalCurrency !== draft.contract.payoutCurrency;
+      if (reimbursementNeedsFx && !item.fx) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'FX reference is required when the reimbursement currency differs from payout',
+          path: ['lineItems', index, 'fx'],
+        });
+      }
+      if (!reimbursementNeedsFx && item.fx) {
+        ctx.addIssue({
+          code: 'custom',
+          message:
+            'FX reference must be omitted when the reimbursement currency equals the payout currency',
+          path: ['lineItems', index, 'fx'],
+        });
+      }
+    });
 
     if (draft.documentType === 'cancellation' && !draft.invoiceNumber.startsWith('CN-')) {
       ctx.addIssue({
@@ -208,6 +277,6 @@ export const invoiceDraftSchema = z
     }
   });
 
-export { documentTypeEnum, localeEnum };
+export { documentTypeEnum, localeEnum, reimbursementDirectionEnum };
 export type InvoiceDraftInput = z.input<typeof invoiceDraftSchema>;
 export type InvoiceDraftParsed = z.output<typeof invoiceDraftSchema>;

@@ -3,11 +3,17 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { formatInvoiceNumber, bumpNumberingState } from '@/lib/domain/numbering';
-import type { DocumentType, Locale } from '@/lib/domain/types';
+import type {
+  DocumentType,
+  HourlyServiceItem,
+  LineItem,
+  Locale,
+  ReimbursementItem,
+} from '@/lib/domain/types';
 import type { InvoiceDraftInput } from '@/lib/domain/schema';
 
 const STORAGE_KEY = 'invgen:draft:v1';
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 export type NumberingState = {
   year: number;
@@ -45,6 +51,33 @@ function todayIso(): string {
   return `${y}-${m}-${d}`;
 }
 
+function newId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function createEmptyHourlyServiceItem(): HourlyServiceItem {
+  return {
+    id: newId(),
+    kind: 'hourly_service',
+    description: '',
+    quantity: '',
+    rate: '',
+  };
+}
+
+export function createEmptyReimbursementItem(payoutCurrency: string): ReimbursementItem {
+  return {
+    id: newId(),
+    kind: 'reimbursement',
+    description: '',
+    originalAmount: '',
+    originalCurrency: payoutCurrency,
+  };
+}
+
 export function createDefaultDraft(): InvoiceDraftInput {
   const year = new Date().getFullYear();
   return {
@@ -55,16 +88,14 @@ export function createDefaultDraft(): InvoiceDraftInput {
     issuer: { legalName: '' },
     payer: { legalName: '' },
     contract: {
-      serviceDescription: '',
-      hourlyRate: '',
       contractCurrency: 'EUR',
       payoutCurrency: 'EUR',
     },
-    timesheet: {
+    servicePeriod: {
       periodStart: '',
       periodEnd: '',
-      totalHours: '',
     },
+    lineItems: [createEmptyHourlyServiceItem()],
   } as InvoiceDraftInput;
 }
 
@@ -81,6 +112,62 @@ function createInitialState(): DraftState {
     lastEditedAt: null,
     wasResetFromCorruption: false,
   };
+}
+
+function migrateLegacyDraft(rawDraft: Record<string, unknown>): InvoiceDraftInput | null {
+  const legacyContract =
+    typeof rawDraft.contract === 'object' && rawDraft.contract !== null
+      ? (rawDraft.contract as Record<string, unknown>)
+      : {};
+  const legacyTimesheet =
+    typeof rawDraft.timesheet === 'object' && rawDraft.timesheet !== null
+      ? (rawDraft.timesheet as Record<string, unknown>)
+      : {};
+  const legacyServicePeriod =
+    typeof rawDraft.servicePeriod === 'object' && rawDraft.servicePeriod !== null
+      ? (rawDraft.servicePeriod as Record<string, unknown>)
+      : {};
+
+  const description =
+    typeof legacyContract.serviceDescription === 'string' ? legacyContract.serviceDescription : '';
+  const rate = typeof legacyContract.hourlyRate === 'string' ? legacyContract.hourlyRate : '';
+  const quantity = typeof legacyTimesheet.totalHours === 'string' ? legacyTimesheet.totalHours : '';
+
+  const hourlyItem: HourlyServiceItem = {
+    id: newId(),
+    kind: 'hourly_service',
+    description,
+    quantity,
+    rate,
+  };
+
+  const periodStart =
+    (typeof legacyServicePeriod.periodStart === 'string' && legacyServicePeriod.periodStart) ||
+    (typeof legacyTimesheet.periodStart === 'string' ? legacyTimesheet.periodStart : '');
+  const periodEnd =
+    (typeof legacyServicePeriod.periodEnd === 'string' && legacyServicePeriod.periodEnd) ||
+    (typeof legacyTimesheet.periodEnd === 'string' ? legacyTimesheet.periodEnd : '');
+
+  const existingLineItems = Array.isArray(rawDraft.lineItems)
+    ? (rawDraft.lineItems as LineItem[])
+    : null;
+
+  const cleaned: Record<string, unknown> = { ...rawDraft };
+  delete cleaned.endClient;
+  delete cleaned.timesheet;
+  cleaned.contract = {
+    contractCurrency:
+      typeof legacyContract.contractCurrency === 'string' ? legacyContract.contractCurrency : 'EUR',
+    payoutCurrency:
+      typeof legacyContract.payoutCurrency === 'string' ? legacyContract.payoutCurrency : 'EUR',
+    payoutMethod:
+      typeof legacyContract.payoutMethod === 'string' ? legacyContract.payoutMethod : undefined,
+  };
+  cleaned.servicePeriod = { periodStart, periodEnd };
+  cleaned.lineItems =
+    existingLineItems && existingLineItems.length > 0 ? existingLineItems : [hourlyItem];
+
+  return cleaned as InvoiceDraftInput;
 }
 
 export const useDraftStore = create<DraftStore>()(
@@ -131,24 +218,13 @@ export const useDraftStore = create<DraftStore>()(
         if (!previous.draft || typeof previous.draft !== 'object') {
           return { ...fallback, wasResetFromCorruption: true };
         }
-        const previousDraft = previous.draft as Record<string, unknown>;
-        const rawTimesheet = previousDraft.timesheet;
-        const previousTimesheet =
-          rawTimesheet && typeof rawTimesheet === 'object'
-            ? (rawTimesheet as Record<string, unknown>)
-            : {};
-        const cleanDraft = {
-          ...previousDraft,
-          timesheet: {
-            periodStart: (previousTimesheet.periodStart as string) ?? '',
-            periodEnd: (previousTimesheet.periodEnd as string) ?? '',
-            totalHours: (previousTimesheet.totalHours as string) ?? '',
-          },
-        };
-        delete (cleanDraft as Record<string, unknown>).endClient;
+        const migratedDraft = migrateLegacyDraft(previous.draft as Record<string, unknown>);
+        if (!migratedDraft) {
+          return { ...fallback, wasResetFromCorruption: true };
+        }
         return {
           ...fallback,
-          draft: cleanDraft as InvoiceDraftInput,
+          draft: migratedDraft,
           documentType: previous.documentType ?? fallback.documentType,
           numbering: previous.numbering ?? fallback.numbering,
           locale: previous.locale ?? fallback.locale,

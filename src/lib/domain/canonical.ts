@@ -1,17 +1,26 @@
-import { calculateContractualAmount, calculatePayoutAmount, negate, toFixed } from './amounts';
+import { divide, multiply, negate, sum, toFixed } from './amounts';
 import type {
   BankDetails,
+  CanonicalAmounts,
   CanonicalBankDetails,
+  CanonicalFixedServiceItem,
   CanonicalFxReference,
+  CanonicalHourlyServiceItem,
   CanonicalInvoice,
+  CanonicalLineItem,
   CanonicalOriginalInvoice,
   CanonicalParty,
+  CanonicalReimbursementFx,
+  CanonicalReimbursementItem,
+  CurrencyCode,
   DocumentType,
   FxReference,
   InvoiceDraft,
+  LineItem,
   Money,
   OriginalInvoiceRef,
   Party,
+  ReimbursementFx,
 } from './types';
 
 export type CanonicalOptions = {
@@ -24,11 +33,11 @@ function optionalTrim(value: string | undefined | null): string | null {
   return trimmed.length === 0 ? null : trimmed;
 }
 
-function money(amount: string, currency: string): Money {
+function money(amount: string, currency: CurrencyCode): Money {
   return { amount, currency };
 }
 
-function signedAmount(documentType: DocumentType, amount: string): string {
+function signed(documentType: DocumentType, amount: string): string {
   return documentType === 'cancellation' ? negate(amount, 2) : toFixed(amount, 2);
 }
 
@@ -49,6 +58,16 @@ function normalizeFxReference(fx: FxReference): CanonicalFxReference {
     rate: toFixed(fx.rate, 6),
     referenceDate: fx.referenceDate,
     sourceUrl: optionalTrim(fx.sourceUrl),
+  };
+}
+
+function normalizeReimbursementFx(fx: ReimbursementFx): CanonicalReimbursementFx {
+  return {
+    direction: fx.direction,
+    notes: optionalTrim(fx.notes),
+    rate: toFixed(fx.rate, 6),
+    referenceDate: fx.referenceDate,
+    source: optionalTrim(fx.source),
   };
 }
 
@@ -78,38 +97,124 @@ function normalizeBankDetails(
   return hasAny ? result : null;
 }
 
+function reimbursementPayoutEquivalent(
+  originalAmount: string,
+  fx: ReimbursementFx | undefined,
+): string {
+  if (!fx) return toFixed(originalAmount, 2);
+  return fx.direction === 'payout_per_original'
+    ? multiply(originalAmount, fx.rate, 2)
+    : divide(originalAmount, fx.rate, 2);
+}
+
+function buildCanonicalLineItem(
+  item: LineItem,
+  documentType: DocumentType,
+  contractCurrency: CurrencyCode,
+  payoutCurrency: CurrencyCode,
+): CanonicalLineItem {
+  if (item.kind === 'hourly_service') {
+    const lineTotalRaw = multiply(item.quantity, item.rate, 2);
+    const result: CanonicalHourlyServiceItem = {
+      description: item.description.trim(),
+      kind: 'hourly_service',
+      lineTotal: money(signed(documentType, lineTotalRaw), contractCurrency),
+      quantity: toFixed(item.quantity, 2),
+      rate: money(toFixed(item.rate, 2), contractCurrency),
+    };
+    return result;
+  }
+
+  if (item.kind === 'fixed_service') {
+    const lineTotalRaw = toFixed(item.amount, 2);
+    const result: CanonicalFixedServiceItem = {
+      description: item.description.trim(),
+      kind: 'fixed_service',
+      lineTotal: money(signed(documentType, lineTotalRaw), contractCurrency),
+    };
+    return result;
+  }
+
+  const payoutEquivalentRaw = reimbursementPayoutEquivalent(item.originalAmount, item.fx);
+  const result: CanonicalReimbursementItem = {
+    description: item.description.trim(),
+    fx: item.fx ? normalizeReimbursementFx(item.fx) : null,
+    kind: 'reimbursement',
+    note: optionalTrim(item.note),
+    originalAmount: money(toFixed(item.originalAmount, 2), item.originalCurrency),
+    payoutEquivalent: money(signed(documentType, payoutEquivalentRaw), payoutCurrency),
+  };
+  return result;
+}
+
+function computeAmounts(
+  lineItems: CanonicalLineItem[],
+  contractCurrency: CurrencyCode,
+  payoutCurrency: CurrencyCode,
+  fxReference: FxReference | undefined,
+): CanonicalAmounts {
+  const serviceTotals = lineItems
+    .filter(
+      (item): item is CanonicalHourlyServiceItem | CanonicalFixedServiceItem =>
+        item.kind === 'hourly_service' || item.kind === 'fixed_service',
+    )
+    .map((item) => item.lineTotal.amount);
+
+  const reimbursementTotals = lineItems
+    .filter((item): item is CanonicalReimbursementItem => item.kind === 'reimbursement')
+    .map((item) => item.payoutEquivalent.amount);
+
+  const servicesContractualAmount = sum(serviceTotals, 2);
+  const servicesContractual = money(servicesContractualAmount, contractCurrency);
+
+  let servicesPayout: Money | null = null;
+  if (contractCurrency === payoutCurrency) {
+    servicesPayout = money(servicesContractualAmount, payoutCurrency);
+  } else if (fxReference) {
+    const converted = multiply(servicesContractualAmount, fxReference.rate, 2);
+    servicesPayout = money(converted, payoutCurrency);
+  }
+
+  const reimbursementsTotalAmount =
+    reimbursementTotals.length === 0 ? null : sum(reimbursementTotals, 2);
+  const reimbursementsPayout =
+    reimbursementsTotalAmount === null ? null : money(reimbursementsTotalAmount, payoutCurrency);
+
+  const grandComponents: string[] = [];
+  if (servicesPayout) grandComponents.push(servicesPayout.amount);
+  else grandComponents.push(servicesContractualAmount);
+  if (reimbursementsPayout) grandComponents.push(reimbursementsPayout.amount);
+
+  const grandCurrency = servicesPayout ? payoutCurrency : contractCurrency;
+  const grandTotal = money(sum(grandComponents, 2), grandCurrency);
+
+  return {
+    grandTotal,
+    reimbursementsPayout,
+    servicesContractual,
+    servicesPayout,
+  };
+}
+
 export function toCanonicalInvoice(
   draft: InvoiceDraft,
   options: CanonicalOptions = {},
 ): CanonicalInvoice {
-  const contractualRaw = calculateContractualAmount(
-    draft.timesheet.totalHours,
-    draft.contract.hourlyRate,
+  const { contractCurrency, payoutCurrency } = draft.contract;
+
+  const lineItems = draft.lineItems.map((item) =>
+    buildCanonicalLineItem(item, draft.documentType, contractCurrency, payoutCurrency),
   );
 
-  const contractual = money(
-    signedAmount(draft.documentType, contractualRaw),
-    draft.contract.contractCurrency,
-  );
-
-  let payout: Money | null = null;
-  if (draft.fxReference) {
-    const payoutRaw = calculatePayoutAmount(contractualRaw, draft.fxReference.rate);
-    payout = money(signedAmount(draft.documentType, payoutRaw), draft.contract.payoutCurrency);
-  }
+  const amounts = computeAmounts(lineItems, contractCurrency, payoutCurrency, draft.fxReference);
 
   const canonical: CanonicalInvoice = {
-    amounts: {
-      contractual,
-      payout,
-    },
+    amounts,
     bankDetails: normalizeBankDetails(options.bankDetails ?? null),
     contract: {
-      contractCurrency: draft.contract.contractCurrency,
-      hourlyRate: money(toFixed(draft.contract.hourlyRate, 2), draft.contract.contractCurrency),
-      payoutCurrency: draft.contract.payoutCurrency,
+      contractCurrency,
+      payoutCurrency,
       payoutMethod: optionalTrim(draft.contract.payoutMethod),
-      serviceDescription: draft.contract.serviceDescription.trim(),
     },
     documentType: draft.documentType,
     dueDate: draft.dueDate ?? null,
@@ -117,6 +222,7 @@ export function toCanonicalInvoice(
     invoiceNumber: draft.invoiceNumber.trim(),
     issueDate: draft.issueDate,
     issuer: normalizeParty(draft.issuer),
+    lineItems,
     locale: draft.locale,
     notes: optionalTrim(draft.notes),
     originalInvoice:
@@ -124,11 +230,10 @@ export function toCanonicalInvoice(
         ? normalizeOriginalInvoice(draft.originalInvoice)
         : null,
     payer: normalizeParty(draft.payer),
-    serviceDeliveryDate: draft.timesheet.periodEnd,
-    timesheet: {
-      periodEnd: draft.timesheet.periodEnd,
-      periodStart: draft.timesheet.periodStart,
-      totalHours: toFixed(draft.timesheet.totalHours, 2),
+    serviceDeliveryDate: draft.servicePeriod.periodEnd,
+    servicePeriod: {
+      periodEnd: draft.servicePeriod.periodEnd,
+      periodStart: draft.servicePeriod.periodStart,
     },
   };
 

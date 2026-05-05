@@ -33,17 +33,14 @@ export type CanonicalBankDetails = {
 };
 
 export type ContractTerms = {
-  serviceDescription: string;
-  hourlyRate: string;
   contractCurrency: CurrencyCode;
   payoutCurrency: CurrencyCode;
   payoutMethod?: string;
 };
 
-export type TimesheetSummary = {
+export type ServicePeriod = {
   periodStart: string;
   periodEnd: string;
-  totalHours: string;
 };
 
 export type FxReference = {
@@ -62,6 +59,52 @@ export type OriginalInvoiceRef = {
   currency: CurrencyCode;
 };
 
+export type LineItemId = string;
+
+// Service line items are denominated in the invoice's contractCurrency.
+// Their conversion to payoutCurrency uses the invoice-level FX reference (when present).
+export type HourlyServiceItem = {
+  id: LineItemId;
+  kind: 'hourly_service';
+  description: string;
+  quantity: string;
+  rate: string;
+};
+
+export type FixedServiceItem = {
+  id: LineItemId;
+  kind: 'fixed_service';
+  description: string;
+  amount: string;
+};
+
+// Reimbursement items carry their own original currency and per-item FX.
+// `direction = 'original_per_payout'` means rate = "1 payoutCurrency = rate × originalCurrency"
+// (PTAX style for BRL reimbursements settled in USD: rate 4.9880 means 1 USD = 4.9880 BRL).
+// `direction = 'payout_per_original'` means rate = "1 originalCurrency = rate × payoutCurrency"
+// (ECB style: rate 1.08 means 1 EUR = 1.08 USD).
+export type ReimbursementFxDirection = 'original_per_payout' | 'payout_per_original';
+
+export type ReimbursementFx = {
+  rate: string;
+  direction: ReimbursementFxDirection;
+  referenceDate: string;
+  source?: string;
+  notes?: string;
+};
+
+export type ReimbursementItem = {
+  id: LineItemId;
+  kind: 'reimbursement';
+  description: string;
+  originalAmount: string;
+  originalCurrency: CurrencyCode;
+  fx?: ReimbursementFx;
+  note?: string;
+};
+
+export type LineItem = HourlyServiceItem | FixedServiceItem | ReimbursementItem;
+
 export type InvoiceDraftBase = {
   invoiceNumber: string;
   issueDate: string;
@@ -70,7 +113,8 @@ export type InvoiceDraftBase = {
   issuer: Party;
   payer: Party;
   contract: ContractTerms;
-  timesheet: TimesheetSummary;
+  servicePeriod: ServicePeriod;
+  lineItems: LineItem[];
   fxReference?: FxReference;
   notes?: string;
 };
@@ -93,17 +137,14 @@ export type CanonicalParty = {
 };
 
 export type CanonicalContract = {
-  serviceDescription: string;
-  hourlyRate: Money;
   contractCurrency: CurrencyCode;
   payoutCurrency: CurrencyCode;
   payoutMethod: string | null;
 };
 
-export type CanonicalTimesheet = {
+export type CanonicalServicePeriod = {
   periodStart: string;
   periodEnd: string;
-  totalHours: string;
 };
 
 export type CanonicalFxReference = {
@@ -121,9 +162,47 @@ export type CanonicalOriginalInvoice = {
   payoutAmount: Money | null;
 };
 
+export type CanonicalHourlyServiceItem = {
+  kind: 'hourly_service';
+  description: string;
+  quantity: string;
+  rate: Money;
+  lineTotal: Money;
+};
+
+export type CanonicalFixedServiceItem = {
+  kind: 'fixed_service';
+  description: string;
+  lineTotal: Money;
+};
+
+export type CanonicalReimbursementFx = {
+  rate: string;
+  direction: ReimbursementFxDirection;
+  referenceDate: string;
+  source: string | null;
+  notes: string | null;
+};
+
+export type CanonicalReimbursementItem = {
+  kind: 'reimbursement';
+  description: string;
+  originalAmount: Money;
+  fx: CanonicalReimbursementFx | null;
+  payoutEquivalent: Money;
+  note: string | null;
+};
+
+export type CanonicalLineItem =
+  | CanonicalHourlyServiceItem
+  | CanonicalFixedServiceItem
+  | CanonicalReimbursementItem;
+
 export type CanonicalAmounts = {
-  contractual: Money;
-  payout: Money | null;
+  servicesContractual: Money;
+  servicesPayout: Money | null;
+  reimbursementsPayout: Money | null;
+  grandTotal: Money;
 };
 
 export type CanonicalInvoice = {
@@ -136,12 +215,13 @@ export type CanonicalInvoice = {
   invoiceNumber: string;
   issueDate: string;
   issuer: CanonicalParty;
+  lineItems: CanonicalLineItem[];
   locale: Locale;
   notes: string | null;
   originalInvoice: CanonicalOriginalInvoice | null;
   payer: CanonicalParty;
   serviceDeliveryDate: string;
-  timesheet: CanonicalTimesheet;
+  servicePeriod: CanonicalServicePeriod;
 };
 
 export type PdfDocumentModel = CanonicalInvoice;
