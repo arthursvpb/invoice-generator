@@ -23,7 +23,7 @@ export class InvoicePage {
               locale,
               lastEditedAt: new Date().toISOString(),
             },
-            version: 2,
+            version: 3,
           };
           localStorage.setItem('invgen:draft:v1', JSON.stringify(payload));
         } catch {

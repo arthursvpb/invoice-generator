@@ -16,16 +16,22 @@ export const validDraft = {
     country: 'Germany',
   },
   contract: {
-    serviceDescription: 'Software engineering services',
-    hourlyRate: '33',
     contractCurrency: 'EUR',
     payoutCurrency: 'EUR',
   },
-  timesheet: {
+  servicePeriod: {
     periodStart: '2026-04-01',
     periodEnd: '2026-04-30',
-    totalHours: '56',
   },
+  lineItems: [
+    {
+      id: 'item-1',
+      kind: 'hourly_service',
+      description: 'Software engineering services',
+      quantity: '56',
+      rate: '33',
+    },
+  ],
 };
 
 export const validFxDraft = {
@@ -40,6 +46,44 @@ export const validFxDraft = {
     rate: '1.08',
     sourceUrl: 'https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD',
   },
+};
+
+export const validReimbursementDraft = {
+  ...validDraft,
+  contract: {
+    ...validDraft.contract,
+    payoutCurrency: 'USD',
+    payoutMethod: 'ACH',
+  },
+  fxReference: {
+    providerLabel: 'ECB via frankfurter.dev',
+    referenceDate: '2026-04-15',
+    rate: '1.05',
+    sourceUrl: 'https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD',
+  },
+  lineItems: [
+    {
+      id: 'item-svc',
+      kind: 'hourly_service',
+      description: 'Software development services',
+      quantity: '176',
+      rate: '33',
+    },
+    {
+      id: 'item-rb',
+      kind: 'reimbursement',
+      description: 'Claude / AI tooling reimbursement',
+      originalAmount: '1710.68',
+      originalCurrency: 'BRL',
+      fx: {
+        rate: '4.9880',
+        direction: 'original_per_payout',
+        referenceDate: '2026-04-30',
+        source: 'USD/BRL PTAX purchase',
+      },
+      note: 'Approved by client',
+    },
+  ],
 };
 
 export const validCancellationDraft = {

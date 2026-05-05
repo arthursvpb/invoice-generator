@@ -11,6 +11,7 @@ import {
   validCancellationDraft,
   validDraft,
   validFxDraft,
+  validReimbursementDraft,
 } from './fixtures/valid-draft';
 import { InvoicePage } from './pages/invoice-page';
 
@@ -18,7 +19,7 @@ import { InvoicePage } from './pages/invoice-page';
 // from Playwright by default; no reset hook required.
 
 test.describe('A. Smoke', () => {
-  test('1. boots /invoice with all 9 sections rendered', async ({ page }) => {
+  test('1. boots / with all primary sections rendered', async ({ page }) => {
     const inv = new InvoicePage(page);
     await inv.goto();
     for (const title of [
@@ -26,7 +27,9 @@ test.describe('A. Smoke', () => {
       'Pagador',
       'Dados bancários',
       'Termos do contrato',
-      'Apontamento de horas',
+      'Período do serviço',
+      'Serviços',
+      'Reembolsos',
       'Numeração e datas',
       'Observações',
     ]) {
@@ -154,40 +157,40 @@ test.describe('C. Schema validation - every refine', () => {
     await expect(inv.field('dueDate')).toHaveAttribute('aria-invalid', 'true');
   });
 
-  test('13. zero hourlyRate is rejected', async ({ page }) => {
+  test('13. zero hourly rate on a service line item is rejected', async ({ page }) => {
     const inv = new InvoicePage(page);
     await inv.seedDraftBeforeLoad({
       ...validDraft,
-      contract: { ...validDraft.contract, hourlyRate: '0' },
+      lineItems: [{ ...validDraft.lineItems[0], rate: '0' }],
     });
     await inv.goto();
     await inv.previewButton().click();
-    await expect(inv.field('contract.hourlyRate')).toHaveAttribute('aria-invalid', 'true');
+    await expect(inv.field('lineItems.0.rate')).toHaveAttribute('aria-invalid', 'true');
   });
 
-  test('14. non-numeric hourlyRate is rejected without crashing (isPositive defensive)', async ({
+  test('14. non-numeric hourly rate is rejected without crashing (isPositive defensive)', async ({
     page,
   }) => {
     const inv = new InvoicePage(page);
     await inv.seedDraftBeforeLoad({
       ...validDraft,
-      contract: { ...validDraft.contract, hourlyRate: 'abc' },
+      lineItems: [{ ...validDraft.lineItems[0], rate: 'abc' }],
     });
     await inv.goto();
     await inv.previewButton().click();
-    await expect(inv.field('contract.hourlyRate')).toHaveAttribute('aria-invalid', 'true');
+    await expect(inv.field('lineItems.0.rate')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.getByText(/Application error/i)).toHaveCount(0);
   });
 
-  test('15. empty totalHours is rejected without crash (the original bug)', async ({ page }) => {
+  test('15. empty hours on the service line item is rejected without crash', async ({ page }) => {
     const inv = new InvoicePage(page);
     await inv.seedDraftBeforeLoad({
       ...validDraft,
-      timesheet: { ...validDraft.timesheet, totalHours: '' },
+      lineItems: [{ ...validDraft.lineItems[0], quantity: '' }],
     });
     await inv.goto();
     await inv.previewButton().click();
-    await expect(inv.field('timesheet.totalHours')).toHaveAttribute('aria-invalid', 'true');
+    await expect(inv.field('lineItems.0.quantity')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.getByText(/Invalid decimal string/i)).toHaveCount(0);
   });
 
@@ -195,15 +198,14 @@ test.describe('C. Schema validation - every refine', () => {
     const inv = new InvoicePage(page);
     await inv.seedDraftBeforeLoad({
       ...validDraft,
-      timesheet: {
-        ...validDraft.timesheet,
+      servicePeriod: {
         periodStart: '2026-04-30',
         periodEnd: '2026-04-01',
       },
     });
     await inv.goto();
     await inv.previewButton().click();
-    await expect(inv.field('timesheet.periodEnd')).toHaveAttribute('aria-invalid', 'true');
+    await expect(inv.field('servicePeriod.periodEnd')).toHaveAttribute('aria-invalid', 'true');
   });
 
   test('17. currencies differ but fxReference missing is rejected', async ({ page }) => {
@@ -477,8 +479,8 @@ test.describe('F. Storage + persistence', () => {
     await inv.goto();
     await page.reload();
     await expect(inv.field('issuer.legalName')).toHaveValue('Acme Studio');
-    await expect(inv.field('contract.hourlyRate')).toHaveValue('33');
-    await expect(inv.field('timesheet.totalHours')).toHaveValue('56');
+    await expect(inv.field('lineItems.0.rate')).toHaveValue('33');
+    await expect(inv.field('lineItems.0.quantity')).toHaveValue('56');
   });
 
   test('36. settings round-trip preserves issuer and bank defaults', async ({ page }) => {
@@ -515,7 +517,7 @@ test.describe('F. Storage + persistence', () => {
     await expect(page.getByText('Emissor', { exact: false }).first()).toBeVisible();
   });
 
-  test('39. v1 → current draft migration drops endClient and timesheet.source', async ({
+  test('39. v1 → v3 draft migration drops endClient and synthesises a service line item', async ({
     page,
   }) => {
     const inv = new InvoicePage(page);
@@ -525,10 +527,16 @@ test.describe('F. Storage + persistence', () => {
     const draftDraft = (draft as Record<string, Record<string, Record<string, unknown>>> | null)
       ?.state?.draft;
     expect(draftDraft).not.toHaveProperty('endClient');
-    const ts = (draftDraft?.timesheet ?? {}) as Record<string, unknown>;
-    expect(ts).not.toHaveProperty('source');
-    expect(ts).not.toHaveProperty('csvFileName');
-    expect(ts.totalHours).toBe('56');
+    expect(draftDraft).not.toHaveProperty('timesheet');
+    const period = (draftDraft?.servicePeriod ?? {}) as Record<string, unknown>;
+    expect(period.periodStart).toBe('2025-04-01');
+    expect(period.periodEnd).toBe('2025-04-30');
+    const items = (draftDraft?.lineItems ?? []) as Array<Record<string, unknown>>;
+    expect(items).toHaveLength(1);
+    expect(items[0]?.kind).toBe('hourly_service');
+    expect(items[0]?.quantity).toBe('56');
+    expect(items[0]?.rate).toBe('33');
+    expect(items[0]?.description).toBe('Eng');
   });
 });
 
@@ -716,6 +724,63 @@ test.describe('J. Mobile + responsive', () => {
     await expect(
       page.getByRole('button', { name: /^(Download PDF|Baixar PDF)$/i }).last(),
     ).toBeVisible();
+  });
+});
+
+test.describe('L. Multi-line items + reimbursements', () => {
+  test('59. seeded reimbursement draft previews end to end', async ({ page }) => {
+    const inv = new InvoicePage(page);
+    await mockFxOk(page, { rate: 1.05 });
+    await inv.seedDraftBeforeLoad(validReimbursementDraft);
+    await inv.goto();
+    await expect(inv.field('lineItems.0.quantity')).toHaveValue('176');
+    await expect(inv.field('lineItems.0.rate')).toHaveValue('33');
+    await expect(inv.field('lineItems.1.originalAmount')).toHaveValue('1710.68');
+    await expect(inv.field('lineItems.1.originalCurrency')).toHaveValue('BRL');
+    await expect(inv.field('lineItems.1.fx.rate')).toHaveValue('4.9880');
+    await inv.previewButton().click();
+    await expect(inv.previewDialog()).toBeVisible({ timeout: 15_000 });
+    await expect(inv.pdfIframe('invoice')).toHaveAttribute('src', /^blob:/, { timeout: 15_000 });
+  });
+
+  test('60. adding then removing a reimbursement keeps the form usable', async ({ page }) => {
+    const inv = new InvoicePage(page);
+    await mockFxOk(page);
+    await inv.seedDraftBeforeLoad({
+      ...validDraft,
+      contract: { ...validDraft.contract, payoutCurrency: 'USD' },
+    });
+    await inv.goto();
+    await page.getByRole('button', { name: /Adicionar reembolso|Add reimbursement/i }).click();
+    await expect(inv.field('lineItems.1.description')).toBeVisible();
+    page.once('dialog', (d) => void d.accept());
+    await page
+      .getByRole('button', { name: /Remover este reembolso|Remove this reimbursement/i })
+      .click();
+    await expect(inv.field('lineItems.1.description')).toHaveCount(0);
+  });
+
+  test('61. reimbursement currency matching payout hides FX subgroup', async ({ page }) => {
+    const inv = new InvoicePage(page);
+    await mockFxOk(page);
+    const draft = {
+      ...validDraft,
+      contract: { ...validDraft.contract, payoutCurrency: 'USD' },
+      fxReference: validFxDraft.fxReference,
+      lineItems: [
+        ...validDraft.lineItems,
+        {
+          id: 'r-1',
+          kind: 'reimbursement',
+          description: 'Travel',
+          originalAmount: '50',
+          originalCurrency: 'USD',
+        },
+      ],
+    };
+    await inv.seedDraftBeforeLoad(draft);
+    await inv.goto();
+    await expect(inv.field('lineItems.1.fx.rate')).toHaveCount(0);
   });
 });
 
