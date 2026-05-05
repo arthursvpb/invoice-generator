@@ -11,7 +11,15 @@ export type Messages = {
     issuer: { title: string; description: string; useDefaults: string; saveAsDefault: string };
     payer: { title: string; description: string };
     contract: { title: string; description: string };
-    timesheet: {
+    servicePeriod: {
+      title: string;
+      description: string;
+    };
+    serviceItems: {
+      title: string;
+      description: string;
+    };
+    reimbursements: {
       title: string;
       description: string;
     };
@@ -46,9 +54,6 @@ export type Messages = {
       optional: string;
     };
     contract: {
-      serviceDescription: string;
-      serviceDescriptionPlaceholder: string;
-      hourlyRate: string;
       payoutMethod: string;
       payoutMethodPlaceholder: string;
       contractCurrency: string;
@@ -56,10 +61,55 @@ export type Messages = {
       payoutCurrency: string;
       payoutCurrencyHint: string;
     };
-    timesheet: {
+    servicePeriod: {
       periodStart: string;
       periodEnd: string;
-      totalHours: string;
+    };
+    serviceItems: {
+      kindHourly: string;
+      kindFixed: string;
+      description: string;
+      descriptionPlaceholder: string;
+      quantity: string;
+      rate: string;
+      amount: string;
+      addHourly: string;
+      addFixed: string;
+      remove: string;
+      removeAria: string;
+      confirmRemove: string;
+      lineTotal: string;
+      lineTotalPending: string;
+    };
+    reimbursements: {
+      cardEyebrow: string;
+      empty: string;
+      add: string;
+      remove: string;
+      removeAria: string;
+      confirmRemove: string;
+      description: string;
+      descriptionPlaceholder: string;
+      originalAmount: string;
+      originalCurrency: string;
+      originalCurrencyHint: string;
+      fxTitle: string;
+      fxRate: string;
+      fxDirection: string;
+      fxReferenceDate: string;
+      fxSource: string;
+      fxSourceHint: string;
+      fxSourcePlaceholder: string;
+      directionOriginalPerPayoutLabel: string;
+      directionPayoutPerOriginalLabel: string;
+      directionOriginalPerPayout: string;
+      directionPayoutPerOriginal: string;
+      note: string;
+      noteHint: string;
+      notePlaceholder: string;
+      equivalentInPayout: string;
+      equivalentNoFx: string;
+      equivalentPending: string;
     };
     fx: {
       provider: string;
@@ -199,11 +249,21 @@ export const en: Messages = {
     },
     contract: {
       title: 'Contract terms',
-      description: 'Service description, rate, and the currencies for invoicing and payout.',
+      description: 'Currencies for invoicing and payout, and the preferred payout method.',
     },
-    timesheet: {
-      title: 'Timesheet',
-      description: 'The billing period and the total hours delivered.',
+    servicePeriod: {
+      title: 'Service period',
+      description: 'The window of work this invoice covers.',
+    },
+    serviceItems: {
+      title: 'Services',
+      description:
+        'Hourly or fixed work, in the contract currency. The contract currency converts to payout via the invoice FX.',
+    },
+    reimbursements: {
+      title: 'Reimbursements',
+      description:
+        'Out-of-pocket expenses billed back to the payer in the payout currency. Each reimbursement carries its own FX reference when needed.',
     },
     fx: {
       title: 'FX reference',
@@ -253,9 +313,6 @@ export const en: Messages = {
       optional: 'Optional',
     },
     contract: {
-      serviceDescription: 'Service description',
-      serviceDescriptionPlaceholder: 'Software engineering services - April 2026',
-      hourlyRate: 'Hourly rate',
       payoutMethod: 'Payout method',
       payoutMethodPlaceholder: 'SEPA, Wise, bank wire, ...',
       contractCurrency: 'Contract currency',
@@ -263,10 +320,55 @@ export const en: Messages = {
       payoutCurrency: 'Payout currency',
       payoutCurrencyHint: 'Same as contract unless paid in a different currency.',
     },
-    timesheet: {
+    servicePeriod: {
       periodStart: 'Period start',
       periodEnd: 'Period end',
-      totalHours: 'Total hours',
+    },
+    serviceItems: {
+      kindHourly: 'Hourly service',
+      kindFixed: 'Fixed-fee service',
+      description: 'Description',
+      descriptionPlaceholder: 'Software engineering services - April 2026',
+      quantity: 'Hours',
+      rate: 'Hourly rate',
+      amount: 'Amount',
+      addHourly: 'Add hourly service',
+      addFixed: 'Add fixed-fee service',
+      remove: 'Remove',
+      removeAria: 'Remove this service item',
+      confirmRemove: 'Remove this service line item?',
+      lineTotal: 'Line total',
+      lineTotalPending: '—',
+    },
+    reimbursements: {
+      cardEyebrow: 'Reimbursement',
+      empty: 'No reimbursements yet. Add one to bill expenses you fronted on the payer\'s behalf.',
+      add: 'Add reimbursement',
+      remove: 'Remove',
+      removeAria: 'Remove this reimbursement',
+      confirmRemove: 'Remove this reimbursement?',
+      description: 'Description',
+      descriptionPlaceholder: 'Claude / AI tooling reimbursement',
+      originalAmount: 'Original amount',
+      originalCurrency: 'Original currency',
+      originalCurrencyHint: 'ISO code (BRL, EUR, USD)',
+      fxTitle: 'FX conversion to payout currency',
+      fxRate: 'Rate',
+      fxDirection: 'Rate direction',
+      fxReferenceDate: 'Reference date',
+      fxSource: 'Source',
+      fxSourceHint: 'PTAX, ECB, Wise, etc. - shown on the PDF.',
+      fxSourcePlaceholder: 'USD/BRL PTAX purchase',
+      directionOriginalPerPayoutLabel: '1 payout = X original (PTAX style)',
+      directionPayoutPerOriginalLabel: '1 original = X payout (ECB style)',
+      directionOriginalPerPayout: '1 {payout} = rate × {original}. Equivalent = original ÷ rate.',
+      directionPayoutPerOriginal: '1 {original} = rate × {payout}. Equivalent = original × rate.',
+      note: 'Note',
+      noteHint: 'Optional. Renders below the description on the PDF.',
+      notePlaceholder: 'Approved by client',
+      equivalentInPayout: 'Equivalent in payout',
+      equivalentNoFx: 'Amount in payout',
+      equivalentPending: '—',
     },
     fx: {
       provider: 'Provider',
@@ -406,11 +508,21 @@ export const ptBR: Messages = {
     },
     contract: {
       title: 'Termos do contrato',
-      description: 'Descrição do serviço, taxa e moedas de contrato e pagamento.',
+      description: 'Moedas de contrato e pagamento, e a forma de pagamento preferida.',
     },
-    timesheet: {
-      title: 'Apontamento de horas',
-      description: 'O período de faturamento e o total de horas entregues.',
+    servicePeriod: {
+      title: 'Período do serviço',
+      description: 'A janela de trabalho coberta por esta fatura.',
+    },
+    serviceItems: {
+      title: 'Serviços',
+      description:
+        'Trabalho por hora ou valor fixo, na moeda do contrato. A conversão para o pagamento usa o câmbio da fatura.',
+    },
+    reimbursements: {
+      title: 'Reembolsos',
+      description:
+        'Despesas pagas em nome do pagador, faturadas na moeda de pagamento. Cada reembolso carrega seu próprio câmbio quando necessário.',
     },
     fx: {
       title: 'Câmbio de referência',
@@ -460,9 +572,6 @@ export const ptBR: Messages = {
       optional: 'Opcional',
     },
     contract: {
-      serviceDescription: 'Descrição do serviço',
-      serviceDescriptionPlaceholder: 'Serviços de engenharia de software - abril 2026',
-      hourlyRate: 'Valor por hora',
       payoutMethod: 'Método de pagamento',
       payoutMethodPlaceholder: 'SEPA, Wise, TED, ...',
       contractCurrency: 'Moeda do contrato',
@@ -470,10 +579,55 @@ export const ptBR: Messages = {
       payoutCurrency: 'Moeda do pagamento',
       payoutCurrencyHint: 'Igual à do contrato, salvo se pago em outra moeda.',
     },
-    timesheet: {
+    servicePeriod: {
       periodStart: 'Início do período',
       periodEnd: 'Fim do período',
-      totalHours: 'Total de horas',
+    },
+    serviceItems: {
+      kindHourly: 'Serviço por hora',
+      kindFixed: 'Serviço com valor fixo',
+      description: 'Descrição',
+      descriptionPlaceholder: 'Serviços de engenharia de software - abril 2026',
+      quantity: 'Horas',
+      rate: 'Valor por hora',
+      amount: 'Valor',
+      addHourly: 'Adicionar serviço por hora',
+      addFixed: 'Adicionar serviço com valor fixo',
+      remove: 'Remover',
+      removeAria: 'Remover este item de serviço',
+      confirmRemove: 'Remover este item de serviço?',
+      lineTotal: 'Total do item',
+      lineTotalPending: '—',
+    },
+    reimbursements: {
+      cardEyebrow: 'Reembolso',
+      empty: 'Nenhum reembolso ainda. Adicione um para faturar despesas pagas em nome do pagador.',
+      add: 'Adicionar reembolso',
+      remove: 'Remover',
+      removeAria: 'Remover este reembolso',
+      confirmRemove: 'Remover este reembolso?',
+      description: 'Descrição',
+      descriptionPlaceholder: 'Reembolso de Claude / ferramentas de IA',
+      originalAmount: 'Valor original',
+      originalCurrency: 'Moeda original',
+      originalCurrencyHint: 'Código ISO (BRL, EUR, USD)',
+      fxTitle: 'Conversão para a moeda de pagamento',
+      fxRate: 'Taxa',
+      fxDirection: 'Direção da taxa',
+      fxReferenceDate: 'Data de referência',
+      fxSource: 'Fonte',
+      fxSourceHint: 'PTAX, BCB, ECB, Wise etc. - exibido no PDF.',
+      fxSourcePlaceholder: 'PTAX compra USD/BRL',
+      directionOriginalPerPayoutLabel: '1 pagamento = X original (PTAX)',
+      directionPayoutPerOriginalLabel: '1 original = X pagamento (ECB)',
+      directionOriginalPerPayout: '1 {payout} = taxa × {original}. Equivalente = original ÷ taxa.',
+      directionPayoutPerOriginal: '1 {original} = taxa × {payout}. Equivalente = original × taxa.',
+      note: 'Observação',
+      noteHint: 'Opcional. Aparece abaixo da descrição no PDF.',
+      notePlaceholder: 'Aprovado pelo cliente',
+      equivalentInPayout: 'Equivalente no pagamento',
+      equivalentNoFx: 'Valor no pagamento',
+      equivalentPending: '—',
     },
     fx: {
       provider: 'Fonte',

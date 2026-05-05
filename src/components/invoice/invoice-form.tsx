@@ -13,7 +13,9 @@ import { CorruptionBanner } from './corruption-banner';
 import { IssuerSection } from './sections/issuer-section';
 import { PayerSection } from './sections/payer-section';
 import { ContractSection } from './sections/contract-section';
-import { TimesheetSection } from './sections/timesheet-section';
+import { ServicePeriodSection } from './sections/service-period-section';
+import { ServiceItemsSection } from './sections/service-items-section';
+import { ReimbursementsSection } from './sections/reimbursements-section';
 import { FxReferenceSection } from './sections/fx-reference-section';
 import { CancellationReferenceSection } from './sections/cancellation-reference-section';
 import { BankDetailsSection } from './sections/bank-details-section';
@@ -150,7 +152,9 @@ export function InvoiceForm() {
         <PayerSection />
         <BankDetailsSection />
         <ContractSection />
-        <TimesheetSection />
+        <ServicePeriodSection />
+        <ServiceItemsSection />
+        <ReimbursementsSection />
         <FxReferenceSection />
         <CancellationReferenceSection />
         <NumberingSection />

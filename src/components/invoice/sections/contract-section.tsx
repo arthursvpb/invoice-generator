@@ -3,7 +3,6 @@
 import { useFormContext } from 'react-hook-form';
 import { SectionCard, FieldGrid, FieldRow } from '@/components/invoice/form-field';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { useT } from '@/lib/i18n/use-t';
 
 export function ContractSection() {
@@ -13,32 +12,6 @@ export function ContractSection() {
 
   return (
     <SectionCard title={t.sections.contract.title} description={t.sections.contract.description}>
-      <FieldRow name="contract.serviceDescription" label={copy.serviceDescription} required>
-        <Textarea
-          id="contract.serviceDescription"
-          rows={2}
-          placeholder={copy.serviceDescriptionPlaceholder}
-          {...register('contract.serviceDescription')}
-        />
-      </FieldRow>
-      <FieldGrid>
-        <FieldRow name="contract.hourlyRate" label={copy.hourlyRate} required>
-          <Input
-            id="contract.hourlyRate"
-            inputMode="decimal"
-            placeholder="33"
-            {...register('contract.hourlyRate')}
-          />
-        </FieldRow>
-        <FieldRow name="contract.payoutMethod" label={copy.payoutMethod}>
-          <Input
-            id="contract.payoutMethod"
-            placeholder={copy.payoutMethodPlaceholder}
-            autoComplete="off"
-            {...register('contract.payoutMethod')}
-          />
-        </FieldRow>
-      </FieldGrid>
       <FieldGrid>
         <FieldRow
           name="contract.contractCurrency"
@@ -71,6 +44,14 @@ export function ContractSection() {
           />
         </FieldRow>
       </FieldGrid>
+      <FieldRow name="contract.payoutMethod" label={copy.payoutMethod}>
+        <Input
+          id="contract.payoutMethod"
+          placeholder={copy.payoutMethodPlaceholder}
+          autoComplete="off"
+          {...register('contract.payoutMethod')}
+        />
+      </FieldRow>
     </SectionCard>
   );
 }
