@@ -12,16 +12,22 @@ const baseDraft: InvoiceDraft = {
   issuer: { legalName: 'Acme Studio' },
   payer: { legalName: 'Globex GmbH' },
   contract: {
-    serviceDescription: 'Software engineering services - April 2026',
-    hourlyRate: '33',
     contractCurrency: 'EUR',
     payoutCurrency: 'EUR',
   },
-  timesheet: {
+  servicePeriod: {
     periodStart: '2026-04-01',
     periodEnd: '2026-04-30',
-    totalHours: '56',
   },
+  lineItems: [
+    {
+      id: 'item-1',
+      kind: 'hourly_service',
+      description: 'Software engineering services - April 2026',
+      quantity: '56',
+      rate: '33',
+    },
+  ],
 };
 
 function sha(buf: Uint8Array): string {
@@ -112,5 +118,34 @@ describe('renderInvoiceBuffer', () => {
     });
     const buffer = await renderInvoiceBuffer(canonical);
     expect(buffer.byteLength).toBeGreaterThan(1000);
+  });
+
+  it('renders an invoice with a reimbursement line item', async () => {
+    const canonical = toCanonicalInvoice({
+      ...baseDraft,
+      contract: { contractCurrency: 'EUR', payoutCurrency: 'USD' },
+      fxReference: { providerLabel: 'ECB', referenceDate: '2026-04-15', rate: '1.05' },
+      lineItems: [
+        ...baseDraft.lineItems,
+        {
+          id: 'r-1',
+          kind: 'reimbursement',
+          description: 'Claude / AI tooling reimbursement',
+          originalAmount: '1710.68',
+          originalCurrency: 'BRL',
+          fx: {
+            rate: '4.9880',
+            direction: 'original_per_payout',
+            referenceDate: '2026-04-30',
+            source: 'USD/BRL PTAX purchase',
+          },
+          note: 'Approved by client',
+        },
+      ],
+    });
+    const buffer = await renderInvoiceBuffer(canonical);
+    expect(buffer.byteLength).toBeGreaterThan(1000);
+    const baseline = await renderInvoiceBuffer(toCanonicalInvoice(baseDraft));
+    expect(sha(buffer)).not.toBe(sha(baseline));
   });
 });
