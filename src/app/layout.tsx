@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { JetBrains_Mono } from 'next/font/google';
+import Script from 'next/script';
 import { ThemeProvider } from '@/components/theme-provider';
 import { StoreHydrator } from '@/components/store-hydrator';
 import { Header } from '@/components/layout/header';
@@ -109,6 +110,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Footer />
           </div>
         </ThemeProvider>
+        <Script
+          src="https://cdn.delivr.ai/pixels/793e1a3e-6d4b-4949-9b73-2b7428a95e19/p.js"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
